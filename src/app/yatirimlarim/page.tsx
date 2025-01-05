@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Container, Typography, Grid, Box, Modal, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import io, { Socket } from 'socket.io-client';
 
 interface Interest {
   id: number;
@@ -22,6 +23,63 @@ interface Yatirim {
   interest: Interest;
 }
 
+interface Investment {
+    investId: number;
+    originalAmount: number;
+    currentReturn: number;
+    totalAmount: number;
+    dailyRate: number;
+    daysElapsed: number;
+    monthlyRate: number;
+  }
+  
+interface InvestmentReturns {
+userId: number;
+investments: Investment[];
+totalReturn: number;
+totalInvestment: number;
+}
+
+export const useInvestmentSocket = (token: string) => {
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [returns, setReturns] = useState<InvestmentReturns | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+  
+    useEffect(() => {
+      if (!token) return;
+  
+      // Socket.io bağlantısını kur
+      const socketInstance = io('http://localhost:3000', {
+        extraHeaders: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      // Bağlantı durumunu dinle
+      socketInstance.on('connect', () => {
+        setIsConnected(true);
+      });
+  
+      socketInstance.on('disconnect', () => {
+        setIsConnected(false);
+      });
+  
+      // Yatırım getirilerini dinle
+      socketInstance.on('investmentReturns', (data: InvestmentReturns) => {
+        setReturns(data);
+      });
+  
+      setSocket(socketInstance);
+  
+      // Component unmount olduğunda bağlantıyı kapat
+      return () => {
+        socketInstance.disconnect();
+      };
+    }, [token]);
+  
+    return { isConnected, returns };
+  };
+
 export default function YatirimlarimPage() {
   const [yatirimlar, setYatirimlar] = useState<Yatirim[]>([]);
   const [toplamButce, setToplamButce] = useState<number>(0);
@@ -29,6 +87,11 @@ export default function YatirimlarimPage() {
   const [yatirimMiktari, setYatirimMiktari] = useState('');
   const [yukleniyorMu, setYukleniyorMu] = useState(false);
   const [hata, setHata] = useState('');
+
+  const tokent = localStorage.getItem('access_token') || '';
+  const { isConnected, returns } = useInvestmentSocket(tokent);
+
+  console.log(returns);
 
   useEffect(() => {
     const userDataStr = localStorage.getItem('user');
