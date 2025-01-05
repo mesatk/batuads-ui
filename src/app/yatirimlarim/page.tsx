@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Container, Typography, Grid, Box, Modal, TextField } from '@mui/material';
+import { Card, Button, Container, Typography, Grid, Box, Modal, TextField, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import io, { Socket } from 'socket.io-client';
 
@@ -90,6 +90,7 @@ export default function YatirimlarimPage() {
   const [yukleniyorMu, setYukleniyorMu] = useState(false);
   const [hata, setHata] = useState('');
   const [token, setToken] = useState('');
+  const [sonGuncelleme, setSonGuncelleme] = useState<string>('');
 
   useEffect(() => {
     const storedToken = localStorage.getItem('access_token') || '';
@@ -98,7 +99,14 @@ export default function YatirimlarimPage() {
 
   const { isConnected, returns } = useInvestmentSocket(token);
 
-  console.log(returns);
+  // Socket'ten veri geldiğinde son güncelleme zamanını ayarla
+  useEffect(() => {
+    if (returns) {
+      const simdi = new Date().toLocaleTimeString('tr-TR');
+      setSonGuncelleme(simdi);
+    }
+  }, [returns]);
+
   // İlk yükleme için useEffect
   useEffect(() => {
     const userDataStr = localStorage.getItem('user');
@@ -117,6 +125,7 @@ export default function YatirimlarimPage() {
         }
 
         const response = await fetch('http://localhost:3000/invest/user/me', {
+          credentials: 'include',
           headers: {
             'Authorization': `Bearer ${token}`,
             'accept': '*/*'
@@ -308,6 +317,11 @@ export default function YatirimlarimPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {sonGuncelleme && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Son güncelleme: {sonGuncelleme}
+        </Alert>
+      )}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Typography variant="h4" component="h1">
           Yatırımlarım
