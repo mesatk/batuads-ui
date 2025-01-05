@@ -15,7 +15,6 @@ interface Investment {
 
 interface InterestRate {
   id: number;
-  period: number; // ay cinsinden
   rate: number;
   minAmount: string;
   maxAmount: string;
@@ -28,12 +27,24 @@ interface RateUpdate {
   maxAmount: number;
 }
 
+interface NewRate {
+  rate: number;
+  minAmount: number;
+  maxAmount: number;
+}
+
 export default function DashboardPage() {
   const [pendingInvestments, setPendingInvestments] = useState<Investment[]>([]);
   const [interestRates, setInterestRates] = useState<InterestRate[]>([]);
   const [rateUpdates, setRateUpdates] = useState<Record<number, RateUpdate>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [newRate, setNewRate] = useState<NewRate>({
+    rate: 0,
+    minAmount: 0,
+    maxAmount: 0
+  });
+  const [showNewRateForm, setShowNewRateForm] = useState(false);
 
   // Bekleyen yatırımları getir
   const fetchPendingInvestments = async () => {
@@ -149,6 +160,40 @@ export default function DashboardPage() {
     }));
   };
 
+  // Yeni faiz oranı ekleme
+  const handleAddNewRate = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('http://localhost:3000/interests', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          minAmount: newRate.minAmount,
+          maxAmount: newRate.maxAmount,
+          rate: newRate.rate
+        })
+      });
+
+      if (!response.ok) throw new Error('Faiz oranı eklenemedi');
+
+      // Formu sıfırla ve listesi güncelle
+      setNewRate({
+        rate: 0,
+        minAmount: 0,
+        maxAmount: 0
+      });
+      setShowNewRateForm(false);
+      fetchInterestRates();
+    } catch (err: any) {
+      setError('Faiz oranı eklenirken bir hata oluştu');
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -179,11 +224,64 @@ export default function DashboardPage() {
 
       {/* Faiz Oranları Bölümü */}
       <div className="mb-12">
-        <h2 className="text-2xl font-semibold mb-4 text-slate-700">Faiz Oranları</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold text-slate-700">Faiz Oranları</h2>
+          <button
+            onClick={() => setShowNewRateForm(!showNewRateForm)}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+          >
+            {showNewRateForm ? 'İptal' : 'Yeni Faiz Oranı Ekle'}
+          </button>
+        </div>
+
+        {showNewRateForm && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100 mb-4">
+            <h3 className="font-medium mb-4 text-slate-700">Yeni Faiz Oranı Ekle</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm text-slate-600">Faiz Oranı (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newRate.rate}
+                  onChange={(e) => setNewRate(prev => ({ ...prev, rate: parseFloat(e.target.value) }))}
+                  className="border border-slate-200 rounded px-3 py-2 text-slate-600 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none"
+                />
+              </div>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm text-slate-600">Minimum Tutar (₺)</label>
+                <input
+                  type="number"
+                  step="100"
+                  value={newRate.minAmount}
+                  onChange={(e) => setNewRate(prev => ({ ...prev, minAmount: parseFloat(e.target.value) }))}
+                  className="border border-slate-200 rounded px-3 py-2 text-slate-600 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none"
+                />
+              </div>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm text-slate-600">Maksimum Tutar (₺)</label>
+                <input
+                  type="number"
+                  step="100"
+                  value={newRate.maxAmount}
+                  onChange={(e) => setNewRate(prev => ({ ...prev, maxAmount: parseFloat(e.target.value) }))}
+                  className="border border-slate-200 rounded px-3 py-2 text-slate-600 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleAddNewRate}
+              className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            >
+              Faiz Oranını Ekle
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {interestRates.map((rate) => (
             <div key={rate.id} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-              <h3 className="font-medium mb-2 text-slate-700">{rate.period} Aylık</h3>
+              <h3 className="font-medium mb-2 text-slate-700">Aylık</h3>
               <div className="flex flex-col space-y-3">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-slate-600 w-16">Oran:</span>
