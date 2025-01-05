@@ -31,6 +31,8 @@ interface Investment {
     dailyRate: number;
     daysElapsed: number;
     monthlyRate: number;
+    minutesElapsed: number;
+    minuteRate: number;
   }
   
 interface InvestmentReturns {
@@ -87,12 +89,17 @@ export default function YatirimlarimPage() {
   const [yatirimMiktari, setYatirimMiktari] = useState('');
   const [yukleniyorMu, setYukleniyorMu] = useState(false);
   const [hata, setHata] = useState('');
+  const [token, setToken] = useState('');
 
-  const tokent = localStorage.getItem('access_token') || '';
-  const { isConnected, returns } = useInvestmentSocket(tokent);
+  useEffect(() => {
+    const storedToken = localStorage.getItem('access_token') || '';
+    setToken(storedToken);
+  }, []);
+
+  const { isConnected, returns } = useInvestmentSocket(token);
 
   console.log(returns);
-
+  // İlk yükleme için useEffect
   useEffect(() => {
     const userDataStr = localStorage.getItem('user');
     if (userDataStr) {
@@ -134,7 +141,14 @@ export default function YatirimlarimPage() {
     };
 
     fetchYatirimlar();
-  }, []);
+  }, []); // Sadece component mount olduğunda çalışsın
+
+  // Returns değeri güncellendiğinde toplam bütçeyi güncelle
+  useEffect(() => {
+    if (returns) {
+      setToplamButce(returns.totalInvestment + returns.totalReturn);
+    }
+  }, [returns]);
 
   const yeniYatirimOlustur = () => {
     setModalAcik(true);
@@ -227,42 +241,70 @@ export default function YatirimlarimPage() {
   const onaylananYatirimlar = yatirimlar.filter(y => y.status === 'approved');
   const reddedilenYatirimlar = yatirimlar.filter(y => y.status === 'rejected');
 
-  const YatirimListesi = ({ yatirimlar, baslik }: { yatirimlar: Yatirim[], baslik: string }) => (
-    <>
-      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-        {baslik}
-      </Typography>
-      <Grid container spacing={3}>
-        {yatirimlar.map((yatirim) => (
-          <Grid item xs={12} md={6} key={yatirim.id}>
-            <Card sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Yatırım #{yatirim.id}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" gutterBottom>
-                Miktar: {parseFloat(yatirim.amount).toLocaleString('tr-TR')} ₺
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Faiz Oranı: %{yatirim.interest.rate}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Tarih: {new Date(yatirim.createdAt).toLocaleDateString('tr-TR')}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: getDurumRengi(yatirim.status),
-                  mt: 1
-                }}
-              >
-                Durum: {getDurumText(yatirim.status)}
-              </Typography>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </>
-  );
+  const YatirimListesi = ({ yatirimlar, baslik }: { yatirimlar: Yatirim[], baslik: string }) => {
+    const findInvestmentReturns = (investId: number) => {
+      if (!returns || !returns.investments) return null;
+      return returns.investments.find(inv => inv.investId === investId);
+    };
+
+    return (
+      <>
+        <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+          {baslik}
+        </Typography>
+        <Grid container spacing={3}>
+          {yatirimlar.map((yatirim) => {
+            const investmentReturn = findInvestmentReturns(yatirim.id);
+            
+            return (
+              <Grid item xs={12} md={6} key={yatirim.id}>
+                <Card sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Yatırım #{yatirim.id}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" gutterBottom>
+                    Yatırılan Miktar: {parseFloat(yatirim.amount).toLocaleString('tr-TR')} ₺
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Faiz Oranı: %{yatirim.interest.rate}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tarih: {new Date(yatirim.createdAt).toLocaleDateString('tr-TR')}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: getDurumRengi(yatirim.status),
+                      mt: 1
+                    }}
+                  >
+                    Durum: {getDurumText(yatirim.status)}
+                  </Typography>
+
+                  {investmentReturn && yatirim.status === 'approved' && (
+                    <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                      <Typography variant="body2" color="success.main" gutterBottom>
+                        Güncel Kazanç: {investmentReturn.currentReturn.toLocaleString('tr-TR')} ₺
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Toplam Değer: {investmentReturn.totalAmount.toLocaleString('tr-TR')} ₺
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Aylık Faiz: %{investmentReturn.monthlyRate}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Geçen Süre: {investmentReturn.minutesElapsed} dakika
+                      </Typography>
+                    </Box>
+                  )}
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </>
+    );
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -270,14 +312,19 @@ export default function YatirimlarimPage() {
         <Typography variant="h4" component="h1">
           Yatırımlarım
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={yeniYatirimOlustur}
-        >
-          Yeni Yatırım
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="body2" color={isConnected ? "success.main" : "error.main"}>
+            {isConnected ? "Canlı Bağlantı Aktif" : "Bağlantı Bekleniyor..."}
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={yeniYatirimOlustur}
+          >
+            Yeni Yatırım
+          </Button>
+        </Box>
       </Box>
 
       <Card sx={{ mb: 4, p: 3 }}>
