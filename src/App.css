@@ -1,0 +1,30 @@
+/* Modern tasarım için genel stiller */
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Mobil cihazlar için touch optimizasyonu */
+@media (max-width: 768px) {
+  * {
+    cursor: default !important;
+  }
+  
+  button, a {
+    cursor: pointer !important;
+  }
+}
+
+/* Seçim rengi */
+::selection {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: inherit;
+}
