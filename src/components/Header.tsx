@@ -4,14 +4,37 @@ import { useEffect, useState } from "react";
 
 const Header = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
+  const checkLoginStatus = () => {
     const accessToken = localStorage.getItem('access_token');
     const user = localStorage.getItem('user');
     setIsLoggedIn(!!accessToken && !!user);
+    
+    if (user) {
+      const userData = JSON.parse(user);
+      setUserRole(userData.role);
+    } else {
+      setUserRole(null);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    checkLoginStatus();
+
+    // localStorage değişikliklerini dinle
+    window.addEventListener('storage', checkLoginStatus);
+    
+    // Custom event dinleyicisi ekle
+    window.addEventListener('loginStateChange', checkLoginStatus);
+
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+      window.removeEventListener('loginStateChange', checkLoginStatus);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -50,7 +73,12 @@ const Header = () => {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
             <a href="/" className="text-gray-700 hover:text-blue-600 transition-colors">Ana Sayfa</a>
-            <a href="/yatirimlarim" className="text-gray-700 hover:text-blue-600 transition-colors">Yatırımlarım</a>
+            {isLoggedIn && userRole === "admin" && (
+              <a href="/dashboard" className="text-gray-700 hover:text-blue-600 transition-colors">Dashboard</a>
+            )}
+            {isLoggedIn && userRole === "user" && (
+              <a href="/yatirimlarim" className="text-gray-700 hover:text-blue-600 transition-colors">Yatırımlarım</a>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -108,7 +136,12 @@ const Header = () => {
           <div className="md:hidden absolute top-full left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
             <div className="container mx-auto px-4 py-4 space-y-4">
               <a href="/" className="block text-gray-700 hover:text-blue-600 transition-colors">Ana Sayfa</a>
-              <a href="/yatirimlarim" className="block text-gray-700 hover:text-blue-600 transition-colors">Yatırımlarım</a>
+              {isLoggedIn && userRole === "admin" && (
+                <a href="/dashboard" className="block text-gray-700 hover:text-blue-600 transition-colors">Dashboard</a>
+              )}
+              {isLoggedIn && userRole === "user" && (
+                <a href="/yatirimlarim" className="block text-gray-700 hover:text-blue-600 transition-colors">Yatırımlarım</a>
+              )}
               <div className="pt-4 border-t border-gray-200">
                 {isLoggedIn ? (
                   <button

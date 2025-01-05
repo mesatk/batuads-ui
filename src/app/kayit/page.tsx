@@ -36,6 +36,9 @@ export default function RegisterPage() {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
+      // Login durumu değişikliğini bildir
+      window.dispatchEvent(new Event('loginStateChange'));
+
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bir hata oluştu');

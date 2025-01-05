@@ -47,11 +47,14 @@ export default function LoginPage() {
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
+      // Login durumu değişikliğini bildir
+      window.dispatchEvent(new Event('loginStateChange'));
+      
       // Kullanıcı rolüne göre yönlendirme
       if (data.user.role === 'admin') {
-        router.push('/dashboard');
+        router.push('/');
       } else {
-        router.push('/yatirimlar');
+        router.push('/');
       }
     } catch (err: any) {
       console.error('Login error:', err);
