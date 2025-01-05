@@ -49,7 +49,7 @@ export default function LoginPage() {
       
       // Kullanıcı rolüne göre yönlendirme
       if (data.user.role === 'admin') {
-        router.push('/admin');
+        router.push('/dashboard');
       } else {
         router.push('/yatirimlar');
       }
